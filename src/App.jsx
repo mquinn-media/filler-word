@@ -17,6 +17,11 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  CircularProgress,
+  List,
+  ListItem,
+  ListItemText,
+  Alert,
 } from '@mui/material';
 import {
   Mic as MicIcon,
@@ -25,12 +30,16 @@ import {
   TrendingUp as TrendingUpIcon,
   RecordVoiceOver as VoiceIcon,
 } from '@mui/icons-material';
+import firefliesService from './services/firefilesService';
 
 function App() {
   const [openModal, setOpenModal] = useState(false);
   const [openSettings, setOpenSettings] = useState(false);
   const [userName, setUserName] = useState('');
   const [inputName, setInputName] = useState('');
+  const [meetings, setMeetings] = useState([]);
+  const [loadingMeetings, setLoadingMeetings] = useState(false);
+  const [meetingsError, setMeetingsError] = useState(null);
 
   useEffect(() => {
     // Check if user name exists in localStorage
@@ -40,6 +49,25 @@ function App() {
     } else {
       setOpenModal(true);
     }
+  }, []);
+
+  useEffect(() => {
+    // Fetch meetings from Fireflies API
+    const fetchMeetings = async () => {
+      setLoadingMeetings(true);
+      setMeetingsError(null);
+      try {
+        const data = await firefliesService.getTranscripts(20);
+        setMeetings(data.transcripts || []);
+      } catch (error) {
+        console.error('Failed to fetch meetings:', error);
+        setMeetingsError(error.message);
+      } finally {
+        setLoadingMeetings(false);
+      }
+    };
+
+    fetchMeetings();
   }, []);
 
   const handleSaveName = () => {
@@ -252,6 +280,72 @@ function App() {
             </Card>
           </Grid>
         </Grid>
+
+        {/* Test Container */}
+        <Box sx={{ mt: 4 }}>
+          <Card elevation={2}>
+            <CardContent sx={{ minHeight: '200px', p: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Active Meetings from Fireflies
+              </Typography>
+              
+              {loadingMeetings && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress />
+                </Box>
+              )}
+
+              {meetingsError && (
+                <Alert severity="error" sx={{ mt: 2 }}>
+                  Error loading meetings: {meetingsError}
+                </Alert>
+              )}
+
+              {!loadingMeetings && !meetingsError && meetings.length === 0 && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                  No meetings found.
+                </Typography>
+              )}
+
+              {!loadingMeetings && !meetingsError && meetings.length > 0 && (
+                <List>
+                  {meetings.map((meeting) => (
+                    <ListItem 
+                      key={meeting.id}
+                      sx={{ 
+                        borderBottom: '1px solid #e0e0e0',
+                        '&:last-child': { borderBottom: 'none' }
+                      }}
+                    >
+                      <ListItemText
+                        primary={meeting.title || 'Untitled Meeting'}
+                        secondary={
+                          <>
+                            <Typography component="span" variant="body2" color="text.secondary">
+                              Date: {meeting.date ? new Date(meeting.date).toLocaleString() : 'N/A'}
+                            </Typography>
+                            <br />
+                            <Typography component="span" variant="body2" color="text.secondary">
+                              Duration: {meeting.duration ? Math.round(meeting.duration / 60) : 0} minutes
+                            </Typography>
+                            {meeting.meeting_attendees && meeting.meeting_attendees.length > 0 && (
+                              <>
+                                <br />
+                                <Typography component="span" variant="body2" color="text.secondary">
+                                  Attendees: {meeting.meeting_attendees.map(a => a.displayName).join(', ')}
+                                </Typography>
+                              </>
+                            )}
+                          </>
+                        }
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              )}
+            </CardContent>
+          </Card>
+        </Box>
 
         {/* Stats Section */}
         <Box sx={{ mt: 8, textAlign: 'center' }}>
