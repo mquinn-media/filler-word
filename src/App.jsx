@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -12,6 +12,11 @@ import {
   Grid,
   Chip,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from '@mui/material';
 import {
   Mic as MicIcon,
@@ -22,8 +27,148 @@ import {
 } from '@mui/icons-material';
 
 function App() {
+  const [openModal, setOpenModal] = useState(false);
+  const [openSettings, setOpenSettings] = useState(false);
+  const [userName, setUserName] = useState('');
+  const [inputName, setInputName] = useState('');
+
+  useEffect(() => {
+    // Check if user name exists in localStorage
+    const storedName = localStorage.getItem('teamsUserName');
+    if (storedName) {
+      setUserName(storedName);
+    } else {
+      setOpenModal(true);
+    }
+  }, []);
+
+  const handleSaveName = () => {
+    if (inputName.trim()) {
+      localStorage.setItem('teamsUserName', inputName.trim());
+      setUserName(inputName.trim());
+      setOpenModal(false);
+      setInputName('');
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSaveName();
+    }
+  };
+
+  const handleOpenSettings = () => {
+    setInputName(userName);
+    setOpenSettings(true);
+  };
+
+  const handleCloseSettings = () => {
+    setOpenSettings(false);
+    setInputName('');
+  };
+
+  const handleUpdateName = () => {
+    if (inputName.trim()) {
+      localStorage.setItem('teamsUserName', inputName.trim());
+      setUserName(inputName.trim());
+      setOpenSettings(false);
+      setInputName('');
+    }
+  };
+
+  const handleSettingsKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleUpdateName();
+    }
+  };
+
   return (
     <Box sx={{ flexGrow: 1 }}>
+      {/* Welcome Modal */}
+      <Dialog 
+        open={openModal} 
+        onClose={() => {}} 
+        disableEscapeKeyDown
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ textAlign: 'center', pt: 4 }}>
+          <VoiceIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
+          <Typography variant="h4" component="div" fontWeight="bold">
+            Welcome to Filler Words Analyzer
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3, textAlign: 'center' }}>
+            To personalize your experience, please enter your name as it appears in Teams meetings.
+          </Typography>
+          <TextField
+            autoFocus
+            fullWidth
+            label="Your Name"
+            placeholder="e.g., John Smith"
+            variant="outlined"
+            value={inputName}
+            onChange={(e) => setInputName(e.target.value)}
+            onKeyPress={handleKeyPress}
+            sx={{ mt: 2 }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button
+            variant="contained"
+            fullWidth
+            size="large"
+            onClick={handleSaveName}
+            disabled={!inputName.trim()}
+          >
+            Get Started
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Settings Modal */}
+      <Dialog 
+        open={openSettings} 
+        onClose={handleCloseSettings}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Typography variant="h5" component="div" fontWeight="bold">
+            Settings
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Update your name as it appears in Teams meetings
+          </Typography>
+          <TextField
+            autoFocus
+            fullWidth
+            label="Your Name"
+            placeholder="e.g., John Smith"
+            variant="outlined"
+            value={inputName}
+            onChange={(e) => setInputName(e.target.value)}
+            onKeyPress={handleSettingsKeyPress}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={handleCloseSettings}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleUpdateName}
+            disabled={!inputName.trim()}
+          >
+            Save Changes
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* App Bar */}
       <AppBar position="static" elevation={0}>
         <Toolbar>
@@ -31,7 +176,12 @@ function App() {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Filler Words Analyzer
           </Typography>
-          <IconButton color="inherit">
+          {userName && (
+            <Typography variant="body2" sx={{ mr: 2 }}>
+              Welcome, {userName}
+            </Typography>
+          )}
+          <IconButton color="inherit" onClick={handleOpenSettings}>
             <SettingsIcon />
           </IconButton>
         </Toolbar>
