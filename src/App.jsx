@@ -259,46 +259,6 @@ function App() {
         <Typography variant="h4" align="center" gutterBottom fontWeight="600" sx={{ mb: 6 }}>
           Your meeting analysis will apppear below:
         </Typography>
-        
-        <Grid container spacing={4}>
-          {/* Feature Card 1 */}
-          <Grid item xs={12}>
-            <Card
-              elevation={2}
-              sx={{
-                height: '100%',
-                transition: 'transform 0.3s, box-shadow 0.3s',
-                '&:hover': {
-                  transform: 'translateY(-8px)',
-                  boxShadow: 6,
-                },
-              }}
-            >
-              <CardContent sx={{ textAlign: 'center', py: 4 }}>
-                <Box
-                  sx={{
-                    width: 80,
-                    height: 80,
-                    borderRadius: '50%',
-                    bgcolor: 'primary.light',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    margin: '0 auto 16px',
-                  }}
-                >
-                  <MicIcon sx={{ fontSize: 40, color: 'primary.main' }} />
-                </Box>
-                <Typography variant="h5" component="h3" gutterBottom fontWeight="600">
-                  Record
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                  Speak naturally while our app listens and records your voice in real-time
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
 
         {/* Analytics Container */}
         <Box sx={{ mt: 4 }}>
