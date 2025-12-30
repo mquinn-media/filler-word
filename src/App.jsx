@@ -37,9 +37,10 @@ function App() {
   const [openSettings, setOpenSettings] = useState(false);
   const [userName, setUserName] = useState('');
   const [inputName, setInputName] = useState('');
-  const [meetings, setMeetings] = useState([]);
-  const [loadingMeetings, setLoadingMeetings] = useState(false);
-  const [meetingsError, setMeetingsError] = useState(null);
+  const [analytics, setAnalytics] = useState(null);
+  const [userAnalytics, setUserAnalytics] = useState(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState(null);
 
   useEffect(() => {
     // Check if user name exists in localStorage
@@ -52,23 +53,41 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // Fetch meetings from Fireflies API
-    const fetchMeetings = async () => {
-      setLoadingMeetings(true);
-      setMeetingsError(null);
+    // Fetch analytics from Fireflies API for the last 30 days
+    const fetchAnalytics = async () => {
+      setLoadingAnalytics(true);
+      setAnalyticsError(null);
       try {
-        const data = await firefliesService.getTranscripts(20);
-        setMeetings(data.transcripts || []);
+        // Calculate date range for last 30 days
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 30);
+        
+        const startTime = startDate.toISOString();
+        const endTime = endDate.toISOString();
+        
+        console.log('Fetching analytics from', startTime, 'to', endTime);
+        
+        const data = await firefliesService.getAnalytics(startTime, endTime);
+        console.log('Analytics Response:', data);
+        setAnalytics(data.analytics);
+        
+        // If userName is set, fetch user-specific analytics
+        if (userName) {
+          const userData = await firefliesService.getUserAnalytics(userName, startTime, endTime);
+          console.log('User Analytics:', userData);
+          setUserAnalytics(userData);
+        }
       } catch (error) {
-        console.error('Failed to fetch meetings:', error);
-        setMeetingsError(error.message);
+        console.error('Failed to fetch analytics:', error);
+        setAnalyticsError(error.message);
       } finally {
-        setLoadingMeetings(false);
+        setLoadingAnalytics(false);
       }
     };
 
-    fetchMeetings();
-  }, []);
+    fetchAnalytics();
+  }, [userName]);
 
   const handleSaveName = () => {
     if (inputName.trim()) {
@@ -281,67 +300,311 @@ function App() {
           </Grid>
         </Grid>
 
-        {/* Test Container */}
+        {/* Analytics Container */}
         <Box sx={{ mt: 4 }}>
           <Card elevation={2}>
             <CardContent sx={{ minHeight: '200px', p: 3 }}>
               <Typography variant="h6" gutterBottom>
-                Active Meetings from Fireflies
+                Analytics - Last 30 Days
               </Typography>
               
-              {loadingMeetings && (
+              {loadingAnalytics && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
                   <CircularProgress />
                 </Box>
               )}
 
-              {meetingsError && (
+              {analyticsError && (
                 <Alert severity="error" sx={{ mt: 2 }}>
-                  Error loading meetings: {meetingsError}
+                  Error loading analytics: {analyticsError}
                 </Alert>
               )}
 
-              {!loadingMeetings && !meetingsError && meetings.length === 0 && (
+              {!loadingAnalytics && !analyticsError && !analytics && (
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                  No meetings found.
+                  No analytics data available.
                 </Typography>
               )}
 
-              {!loadingMeetings && !meetingsError && meetings.length > 0 && (
-                <List>
-                  {meetings.map((meeting) => (
-                    <ListItem 
-                      key={meeting.id}
-                      sx={{ 
-                        borderBottom: '1px solid #e0e0e0',
-                        '&:last-child': { borderBottom: 'none' }
-                      }}
-                    >
-                      <ListItemText
-                        primary={meeting.title || 'Untitled Meeting'}
-                        secondary={
-                          <>
-                            <Typography component="span" variant="body2" color="text.secondary">
-                              Date: {meeting.date ? new Date(meeting.date).toLocaleString() : 'N/A'}
+              {!loadingAnalytics && !analyticsError && analytics && (
+                <Box>
+                  {/* Team Analytics */}
+                  <Box sx={{ mb: 4 }}>
+                    <Typography variant="h6" color="primary" gutterBottom sx={{ mt: 2 }}>
+                      Team Overview
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6} md={3}>
+                        <Card variant="outlined" sx={{ p: 2, bgcolor: 'background.default' }}>
+                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                            Total Meetings
+                          </Typography>
+                          <Typography variant="h4" fontWeight="bold">
+                            {analytics.team?.conversation?.total_meetings_count || 0}
+                          </Typography>
+                        </Card>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={3}>
+                        <Card variant="outlined" sx={{ p: 2, bgcolor: 'background.default' }}>
+                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                            Avg Filler Words
+                          </Typography>
+                          <Typography variant="h4" fontWeight="bold" color="error.main">
+                            {analytics.team?.conversation?.average_filler_words?.toFixed(1) || 0}
+                          </Typography>
+                        </Card>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={3}>
+                        <Card variant="outlined" sx={{ p: 2, bgcolor: 'background.default' }}>
+                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                            Avg Words/Min
+                          </Typography>
+                          <Typography variant="h4" fontWeight="bold" color="success.main">
+                            {analytics.team?.conversation?.average_words_per_minute?.toFixed(0) || 0}
+                          </Typography>
+                        </Card>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={3}>
+                        <Card variant="outlined" sx={{ p: 2, bgcolor: 'background.default' }}>
+                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                            Avg Questions
+                          </Typography>
+                          <Typography variant="h4" fontWeight="bold">
+                            {analytics.team?.conversation?.average_questions?.toFixed(1) || 0}
+                          </Typography>
+                        </Card>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={4}>
+                        <Card variant="outlined" sx={{ p: 2, bgcolor: 'background.default' }}>
+                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                            Avg Monologues
+                          </Typography>
+                          <Typography variant="h4" fontWeight="bold">
+                            {analytics.team?.conversation?.average_monologues_count?.toFixed(1) || 0}
+                          </Typography>
+                        </Card>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={4}>
+                        <Card variant="outlined" sx={{ p: 2, bgcolor: 'background.default' }}>
+                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                            Avg Talk/Listen Ratio
+                          </Typography>
+                          <Typography variant="h4" fontWeight="bold">
+                            {analytics.team?.conversation?.average_talk_listen_ratio?.toFixed(2) || 0}
+                          </Typography>
+                        </Card>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={4}>
+                        <Card variant="outlined" sx={{ p: 2, bgcolor: 'background.default' }}>
+                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                            Team Members
+                          </Typography>
+                          <Typography variant="h4" fontWeight="bold">
+                            {analytics.team?.conversation?.teammates_count || 0}
+                          </Typography>
+                        </Card>
+                      </Grid>
+                    </Grid>
+                    
+                    {/* Sentiment */}
+                    {analytics.team?.conversation?.average_sentiments && (
+                      <Box sx={{ mt: 3 }}>
+                        <Typography variant="subtitle1" fontWeight="600" gutterBottom>
+                          Average Sentiment
+                        </Typography>
+                        <Grid container spacing={2}>
+                          <Grid item xs={4}>
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography variant="h5" color="success.main" fontWeight="bold">
+                                {analytics.team.conversation.average_sentiments.positive_pct?.toFixed(1) || 0}%
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                Positive
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={4}>
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography variant="h5" color="text.secondary" fontWeight="bold">
+                                {analytics.team.conversation.average_sentiments.neutral_pct?.toFixed(1) || 0}%
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                Neutral
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={4}>
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography variant="h5" color="error.main" fontWeight="bold">
+                                {analytics.team.conversation.average_sentiments.negative_pct?.toFixed(1) || 0}%
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                Negative
+                              </Typography>
+                            </Box>
+                          </Grid>
+                        </Grid>
+                      </Box>
+                    )}
+                  </Box>
+
+                  {/* User Analytics */}
+                  {userAnalytics && (
+                    <Box sx={{ mt: 4 }}>
+                      <Typography variant="h6" color="primary" gutterBottom>
+                        Your Performance ({userAnalytics.user_name || userName})
+                      </Typography>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6} md={3}>
+                          <Card variant="outlined" sx={{ p: 2, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+                            <Typography variant="body2" gutterBottom>
+                              Your Filler Words
                             </Typography>
-                            <br />
-                            <Typography component="span" variant="body2" color="text.secondary">
-                              Duration: {meeting.duration ? Math.round(meeting.duration / 60) : 0} minutes
+                            <Typography variant="h4" fontWeight="bold">
+                              {userAnalytics.conversation?.user_filler_words || 0}
                             </Typography>
-                            {meeting.meeting_attendees && meeting.meeting_attendees.length > 0 && (
-                              <>
-                                <br />
-                                <Typography component="span" variant="body2" color="text.secondary">
-                                  Attendees: {meeting.meeting_attendees.map(a => a.displayName).join(', ')}
-                                </Typography>
-                              </>
+                            {userAnalytics.conversation?.user_filler_words_diff_pct && (
+                              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                {userAnalytics.conversation.user_filler_words_diff_pct > 0 ? '▲' : '▼'} 
+                                {Math.abs(userAnalytics.conversation.user_filler_words_diff_pct).toFixed(1)}%
+                              </Typography>
                             )}
-                          </>
-                        }
-                      />
-                    </ListItem>
-                  ))}
-                </List>
+                          </Card>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                          <Card variant="outlined" sx={{ p: 2, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+                            <Typography variant="body2" gutterBottom>
+                              Your Words/Min
+                            </Typography>
+                            <Typography variant="h4" fontWeight="bold">
+                              {userAnalytics.conversation?.user_words_per_minute?.toFixed(0) || 0}
+                            </Typography>
+                            {userAnalytics.conversation?.user_words_per_minute_diff_pct && (
+                              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                {userAnalytics.conversation.user_words_per_minute_diff_pct > 0 ? '▲' : '▼'} 
+                                {Math.abs(userAnalytics.conversation.user_words_per_minute_diff_pct).toFixed(1)}%
+                              </Typography>
+                            )}
+                          </Card>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                          <Card variant="outlined" sx={{ p: 2, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+                            <Typography variant="body2" gutterBottom>
+                              Your Questions
+                            </Typography>
+                            <Typography variant="h4" fontWeight="bold">
+                              {userAnalytics.conversation?.user_questions || 0}
+                            </Typography>
+                            {userAnalytics.conversation?.user_questions_diff_pct && (
+                              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                {userAnalytics.conversation.user_questions_diff_pct > 0 ? '▲' : '▼'} 
+                                {Math.abs(userAnalytics.conversation.user_questions_diff_pct).toFixed(1)}%
+                              </Typography>
+                            )}
+                          </Card>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                          <Card variant="outlined" sx={{ p: 2, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+                            <Typography variant="body2" gutterBottom>
+                              Your Monologues
+                            </Typography>
+                            <Typography variant="h4" fontWeight="bold">
+                              {userAnalytics.conversation?.user_monologues_count || 0}
+                            </Typography>
+                            {userAnalytics.conversation?.user_monologues_count_diff_pct && (
+                              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                {userAnalytics.conversation.user_monologues_count_diff_pct > 0 ? '▲' : '▼'} 
+                                {Math.abs(userAnalytics.conversation.user_monologues_count_diff_pct).toFixed(1)}%
+                              </Typography>
+                            )}
+                          </Card>
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <Card variant="outlined" sx={{ p: 2, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+                            <Typography variant="body2" gutterBottom>
+                              Your Talk/Listen %
+                            </Typography>
+                            <Typography variant="h4" fontWeight="bold">
+                              {userAnalytics.conversation?.talk_listen_pct?.toFixed(1) || 0}%
+                            </Typography>
+                          </Card>
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <Card variant="outlined" sx={{ p: 2, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+                            <Typography variant="body2" gutterBottom>
+                              Your Meetings
+                            </Typography>
+                            <Typography variant="h4" fontWeight="bold">
+                              {userAnalytics.meeting?.count || 0}
+                            </Typography>
+                            {userAnalytics.meeting?.count_diff_pct && (
+                              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                {userAnalytics.meeting.count_diff_pct > 0 ? '▲' : '▼'} 
+                                {Math.abs(userAnalytics.meeting.count_diff_pct).toFixed(1)}%
+                              </Typography>
+                            )}
+                          </Card>
+                        </Grid>
+                      </Grid>
+                    </Box>
+                  )}
+
+                  {/* All Users List */}
+                  {analytics.users && analytics.users.length > 0 && (
+                    <Box sx={{ mt: 4 }}>
+                      <Typography variant="h6" color="primary" gutterBottom>
+                        All Team Members
+                      </Typography>
+                      <List>
+                        {analytics.users.map((user, idx) => (
+                          <ListItem 
+                            key={user.user_id || idx}
+                            sx={{ 
+                              borderBottom: '1px solid #e0e0e0',
+                              '&:last-child': { borderBottom: 'none' },
+                              bgcolor: user.user_name === userName ? 'primary.light' : 'transparent',
+                            }}
+                          >
+                            <ListItemText
+                              primary={
+                                <Typography fontWeight={user.user_name === userName ? 'bold' : 'normal'}>
+                                  {user.user_name || 'Unknown User'} {user.user_name === userName && '(You)'}
+                                </Typography>
+                              }
+                              secondary={
+                                <React.Fragment>
+                                  <Grid container spacing={2} sx={{ mt: 0.5 }}>
+                                    <Grid item xs={6} sm={3}>
+                                      <Typography variant="body2" color="text.secondary" component="span" display="block">
+                                        Filler Words: <strong>{user.conversation?.user_filler_words || 0}</strong>
+                                      </Typography>
+                                    </Grid>
+                                    <Grid item xs={6} sm={3}>
+                                      <Typography variant="body2" color="text.secondary" component="span" display="block">
+                                        Words/Min: <strong>{user.conversation?.user_words_per_minute?.toFixed(0) || 0}</strong>
+                                      </Typography>
+                                    </Grid>
+                                    <Grid item xs={6} sm={3}>
+                                      <Typography variant="body2" color="text.secondary" component="span" display="block">
+                                        Questions: <strong>{user.conversation?.user_questions || 0}</strong>
+                                      </Typography>
+                                    </Grid>
+                                    <Grid item xs={6} sm={3}>
+                                      <Typography variant="body2" color="text.secondary" component="span" display="block">
+                                        Meetings: <strong>{user.meeting?.count || 0}</strong>
+                                      </Typography>
+                                    </Grid>
+                                  </Grid>
+                                </React.Fragment>
+                              }
+                              secondaryTypographyProps={{ component: 'div' }}
+                            />
+                          </ListItem>
+                        ))}
+                      </List>
+                    </Box>
+                  )}
+                </Box>
               )}
             </CardContent>
           </Card>

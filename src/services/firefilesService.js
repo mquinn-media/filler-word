@@ -1,6 +1,7 @@
 // Fireflies.ai API Service Module
 
 const FIREFLIES_API_KEY = 'c1ef75fc-fe19-43f2-a369-905c7a0008df';
+//const FIREFLIES_API_KEY = 'e4ed2fc7-d744-4a94-abda-32faa8d21b7f';
 const FIREFLIES_BASE_URL = 'https://api.fireflies.ai/graphql';
 
 /**
@@ -135,6 +136,131 @@ class FirefliesService {
     `;
 
     return this.makeRequest(query, { keyword });
+  }
+
+  /**
+   * Get analytics data for teams and users
+   * @param {string} startTime - Start datetime in ISO 8601 format (e.g., "2024-01-01T00:00:00Z")
+   * @param {string} endTime - End datetime in ISO 8601 format (e.g., "2024-12-31T23:59:59Z")
+   * @returns {Promise} Analytics data
+   */
+  async getAnalytics(startTime, endTime) {
+    const query = `
+      query Analytics($startTime: String, $endTime: String) {
+        analytics(start_time: $startTime, end_time: $endTime) {
+          team {
+            conversation {
+              average_filler_words
+              average_filler_words_diff_pct
+              average_monologues_count
+              average_monologues_count_diff_pct
+              average_questions
+              average_questions_diff_pct
+              average_sentiments {
+                negative_pct
+                neutral_pct
+                positive_pct
+              }
+              average_silence_duration
+              average_silence_duration_diff_pct
+              average_talk_listen_ratio
+              average_words_per_minute
+              longest_monologue_duration_sec
+              longest_monologue_duration_diff_pct
+              total_filler_words
+              total_filler_words_diff_pct
+              total_meeting_notes_count
+              total_meetings_count
+              total_monologues_count
+              total_monologues_diff_pct
+              teammates_count
+              total_questions
+              total_questions_diff_pct
+              total_silence_duration
+              total_silence_duration_diff_pct
+            }
+            meeting {
+              count
+              count_diff_pct
+              duration
+              duration_diff_pct
+              average_count
+              average_count_diff_pct
+              average_duration
+              average_duration_diff_pct
+            }
+          }
+          users {
+            user_id
+            user_name
+            user_email
+            conversation {
+              talk_listen_pct
+              talk_listen_ratio
+              total_silence_duration
+              total_silence_duration_compare_to
+              total_silence_pct
+              total_silence_ratio
+              total_speak_duration
+              total_speak_duration_with_user
+              total_word_count
+              user_filler_words
+              user_filler_words_compare_to
+              user_filler_words_diff_pct
+              user_longest_monologue_sec
+              user_longest_monologue_compare_to
+              user_longest_monologue_diff_pct
+              user_monologues_count
+              user_monologues_count_compare_to
+              user_monologues_count_diff_pct
+              user_questions
+              user_questions_compare_to
+              user_questions_diff_pct
+              user_speak_duration
+              user_word_count
+              user_words_per_minute
+              user_words_per_minute_compare_to
+              user_words_per_minute_diff_pct
+            }
+            meeting {
+              count
+              count_diff
+              count_diff_compared_to
+              count_diff_pct
+              duration
+              duration_diff
+              duration_diff_compared_to
+              duration_diff_pct
+            }
+          }
+        }
+      }
+    `;
+
+    return this.makeRequest(query, { startTime, endTime });
+  }
+
+  /**
+   * Get analytics for a specific user by name or email
+   * @param {string} userName - User's name to match
+   * @param {string} startTime - Start datetime in ISO 8601 format
+   * @param {string} endTime - End datetime in ISO 8601 format
+   * @returns {Promise} User-specific analytics
+   */
+  async getUserAnalytics(userName, startTime, endTime) {
+    const data = await this.getAnalytics(startTime, endTime);
+    
+    if (!data.analytics || !data.analytics.users) {
+      return null;
+    }
+
+    // Find user by name or email
+    const user = data.analytics.users.find(u => 
+      u.user_name?.toLowerCase().includes(userName.toLowerCase()) ||
+      u.user_email?.toLowerCase().includes(userName.toLowerCase())
+    );
+
+    return user || null;
   }
 }
 
